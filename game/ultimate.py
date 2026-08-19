@@ -45,8 +45,15 @@ class UltimateGame:
 
         board_index, cell_index = self.parse_move(move)
 
-        if self.target_board is not None and board_index != self.target_board:
-            raise ValueError("You must play in the target board")
+        if self.completed_boards[board_index] is not None:
+            raise ValueError("This board has already been completed")
+
+        if self.target_board is not None:
+            if self.completed_boards[self.target_board] is None:
+                if board_index != self.target_board:
+                    raise ValueError("You must play in the target board")
+            elif board_index not in self.get_available_boards():
+                raise ValueError("You must play in an available board")
 
         board = self.local_boards[board_index]
 
@@ -54,9 +61,9 @@ class UltimateGame:
 
         self.update_local_board(board_index)
 
-        self.target_board = cell_index
-
-        self.switch_player()
+        if not self.game_over:
+            self.target_board = cell_index
+            self.switch_player()
 
     def switch_player(self):
         if self.current_player == "X":
@@ -71,3 +78,29 @@ class UltimateGame:
 
         if winner is not None:
             self.completed_boards[board_index] = winner
+            self.meta_board.make_move(board_index, winner)
+            self.check_winner()
+
+
+        elif board.is_full():
+            self.completed_boards[board_index] = "D"
+
+        self.check_draw()
+
+    def get_available_boards(self):
+        return [
+            index
+            for index, status in enumerate(self.completed_boards)
+            if status is None
+        ]
+
+    def check_winner(self):
+        winner = self.meta_board.get_winner()
+
+        if winner is not None:
+            self.winner = winner
+            self.game_over = True
+
+    def check_draw(self):
+        if not self.get_available_boards() and self.winner is None:
+            self.game_over = True
