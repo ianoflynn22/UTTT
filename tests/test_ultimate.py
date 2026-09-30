@@ -1,5 +1,5 @@
 import pytest
-
+import random
 from game.ultimate import UltimateGame
 
 
@@ -417,3 +417,22 @@ def test_ultimate_draw_does_not_create_a_winner():
     assert game.meta_board.get_winner() is None
     assert game.winner is None
     assert game.game_over is True
+
+def test_ultimate_plus_starts_with_no_plus_symbols():
+    game = UltimateGame(4)
+
+    assert game.plus_count == 0
+    assert game.max_plus == 3
+
+def test_ultimate_move_symbol_is_normal_player():
+    game = UltimateGame(3)
+
+    assert game.get_move_symbol() == "X"
+
+def test_ultimate_plus_can_generate_plus(monkeypatch):
+    game = UltimateGame(4)
+
+    monkeypatch.setattr(random, "randint", lambda a, b: 1)
+
+    assert game.get_move_symbol() == "+"
+    assert game.plus_count == 1

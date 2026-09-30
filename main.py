@@ -52,9 +52,23 @@ def display_board(game):
 def display_ultimate_board(game):
     size = game.board_size
 
-    # Build the local board display first so we know its total width
-    board_groups = []
+    board_width = 17
+    gap = 4
 
+    total_width = (board_width * size) + (gap * (size - 1))
+
+    # Display meta board centred above the local board grid
+    print()
+    print("META BOARD".center(total_width))
+
+    meta_lines = str(game.meta_board).splitlines()
+
+    for line in meta_lines:
+        print(line.center(total_width))
+
+    print()
+
+    # Display local boards
     for board_row in range(size):
         row_boards = []
 
@@ -74,29 +88,6 @@ def display_ultimate_board(game):
                 label = f"BOARD {board_index + 1}"
 
             row_boards.append((label, str(board).splitlines()))
-
-        board_groups.append(row_boards)
-
-    # Width of one local board block
-    board_width = 11
-    gap = 8
-
-    # Total width of the three-board layout
-    total_width = (board_width * size) + (gap * (size - 1))
-
-    # Display meta board centred above Board 5
-    print()
-    print("META BOARD".center(total_width))
-
-    meta_lines = str(game.meta_board).splitlines()
-
-    for line in meta_lines:
-        print(line.center(total_width))
-
-    print()
-
-    # Display local boards
-    for row_boards in board_groups:
 
         # Board labels
         print(

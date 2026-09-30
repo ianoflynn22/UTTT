@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ultimate Tic-Tac-Toe Plus</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#111827;color:#f9fafb;font-family:Arial,sans-serif;padding:16px}
+main{max-width:1100px;margin:auto}
+h1{text-align:center;font-size:clamp(1.5rem,5vw,2.4rem)}
+.controls,.panel,.rules{background:#1f2937;border:1px solid #374151;border-radius:14px;padding:14px;margin:12px 0}
+.controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+select,button{font:inherit;padding:10px;border-radius:9px;border:1px solid #4b5563}
+select{background:#111827;color:white}
+button{background:#60a5fa;color:#07111f;font-weight:bold;cursor:pointer}
+.status{text-align:center;font-weight:bold;font-size:1.1rem}
+.sub{text-align:center;color:#9ca3af;margin-top:5px}
+.normal{width:min(440px,92vw);margin:20px auto}
+.normal-grid{display:grid;gap:3px;background:#4b5563;padding:3px}
+.normal-cell{
+  position:relative;aspect-ratio:1;border:0;background:#111827;
+  font-size:clamp(2rem,13vw,4rem);font-weight:bold;cursor:pointer;
+}
+.normal-cell:disabled{cursor:default}
+.ultimate{display:grid;gap:10px}
+.local{background:#1f2937;border:2px solid #374151;border-radius:10px;padding:5px}
+.local.target{border-color:#60a5fa}
+.label{text-align:center;color:#9ca3af;font-size:.75rem;font-weight:bold;margin-bottom:4px}
+.cells{display:grid;gap:2px;background:#4b5563;padding:2px}
+.cell{
+  position:relative;border:0;padding:0;aspect-ratio:1;
+  background:#111827;color:#f9fafb;
+  font-size:clamp(1rem,4vw,1.7rem);font-weight:bold;cursor:pointer;
+}
+.cell:disabled{cursor:default}
+.x{color:#f87171}.o{color:#34d399}.plus{color:#fbbf24}
+.rules{color:#d1d5db;line-height:1.5}
+.rules strong{color:white}
+.hidden{display:none}
+
+/* Winning line */
+.win-line{
+  position:absolute;
+  left:50%;
+  top:50%;
+  height:5px;
+  width:calc(100% + 8px);
+  background:#fbbf24;
+  border-radius:5px;
+  transform-origin:center;
+  z-index:5;
+  pointer-events:none;
+}
+.win-line.horizontal{transform:translate(-50%,-50%)}
+.win-line.vertical{transform:translate(-50%,-50%) rotate(90deg)}
+.win-line.diag-down{transform:translate(-50%,-50%) rotate(45deg)}
+.win-line.diag-up{transform:translate(-50%,-50%) rotate(-45deg)}
+</style>
+</head>
+<body>
+<main>
+<h1>Ultimate Tic-Tac-Toe Plus</h1>
+
+<div class="controls">
+<select id="mode">
+<option value="ttt">Tic-Tac-Toe</option>
+<option value="tttplus">Tic-Tac-Toe Plus</option>
+<option value="ultimate">Ultimate Tic-Tac-Toe</option>
+<option value="ultimateplus">Ultimate Tic-Tac-Toe Plus</option>
+</select>
+<button id="newGame" type="button">New Game</button>
+</div>
+
+<div class="panel">
+  <div id="status" class="status"></div>
+  <div id="sub" class="sub"></div>
+</div>
+
+<div id="normal" class="normal hidden"></div>
+<div id="ultimateView" class="hidden">
+  <div id="ultimate" class="ultimate"></div>
+</div>
+
+<div class="rules">
+<strong>Rules</strong>
+<div id="rulesText"></div>
+</div>
+</main>
+
+<script>
+"use strict";
+
+const MAX_PLUS = 3;
+const PLUS_PROBABILITY = 1/6;
+let state = null;
+
+function board(size){
+  return Array(size * size).fill(null);
+}
+
+function winningLines(size){
+  const result = [];
+
+  for(let r=0;r<size;r++){
+    const row=[];
+    for(let c=0;c<size;c++) row.push(r*size+c);
+    result.push(row);
+  }
+
+  for(let c=0;c<size;c++){
+    const col=[];
+    for(let r=0;r<size;r++) col.push(r*size+c);
+    result.push(col);
+  }
+
+  const down=[];
+  const up=[];
+  for(let i=0;i<size;i++){
+    down.push(i*size+i);
+    up.push(i*size+(size-1-i));
+  }
+  result.push(down,up);
+
+  return result;
+}
+
+function getWinningLine(cells,size,plusCountsForBoth=true){
+  for(const player of ["X","O"]){
+    for(const line of winningLines(size)){
+      if(line.every(i => cells[i] === player || (plusCountsForBoth && cells[i] === "+"))){
+        return line;
+      }
+    }
+  }
+  return null;
+}
+
+function isFull(cells){
+  return cells.every(v => v !== null);
+}
+
+function rollPlus(){
+  return Math.random() < PLUS_PROBABILITY;
+}
+
+function isPlusMode(){
+  return state.mode === "tttplus" || state.mode === "ultimateplus";
+}
+
+function startGame(){
+  const mode=document.getElementById("mode").value;
+
+  if(mode==="ttt"){
+    state={
+      mode,
+      size:3,
+      cells:board(3),
+      current:"X",
+      winner:null,
+      over:false,
+      plusCount:0
+    };
+  }else if(mode==="tttplus"){
+    state={
+      mode,
+      size:4,
+      cells:board(4),
+      current:"X",
+      winner:null,
+      over:false,
+      plusCount:0
+    };
+  }else{
+    const size=mode==="ultimateplus"?4:3;
+    const count=size*size;
+    state={
+      mode,
+      size,
+      boards:Array.from({length:count},()=>board(size)),
+      completed:Array(count).fill(null),
+      meta:Array(count).fill(null),
+      localPlus:Array(count).fill(0),
+      metaPlus:0,
+      current:"X",
+      target:null,
+      winner:null,
+      over:false
+    };
+  }
+
+  render();
+}
+
+function normalMove(index){
+  if(state.over || state.cells[index] !== null) return;
+
+  if(isPlusMode() && state.plusCount < MAX_PLUS && rollPlus()){
+    state.cells[index]="+";
+    state.plusCount++;
+  }else{
+    state.cells[index]=state.current;
+  }
+
+  const line=getWinningLine(state.cells,state.size,true);
+  if(line){
+    state.winner=state.cells[line.find(i=>state.cells[i]==="X"||state.cells[i]==="O")] || state.current;
+    // Determine winner by checking the actual completed line against each player.
+    for(const p of ["X","O"]){
+      if(line.every(i=>state.cells[i]===p || state.cells[i]==="+")){
+        state.winner=p;
+        break;
+      }
+    }
+    state.over=true;
+  }else if(isFull(state.cells)){
+    state.over=true;
+  }else{
+    state.current=state.current==="X"?"O":"X";
+  }
+
+  render();
+}
+
+function localMoveSymbol(boardIndex){
+  if(state.mode==="ultimateplus" &&
+     state.localPlus[boardIndex] < MAX_PLUS &&
+     rollPlus()){
+    state.localPlus[boardIndex]++;
+    return "+";
+  }
+  return state.current;
+}
+
+function ultimateMove(boardIndex,cellIndex){
+  if(state.over) return;
+  if(state.completed[boardIndex] !== null) return;
+  if(state.boards[boardIndex][cellIndex] !== null) return;
+
+  if(
+    state.target !== null &&
+    state.completed[state.target] === null &&
+    boardIndex !== state.target
+  ) return;
+
+  state.boards[boardIndex][cellIndex]=localMoveSymbol(boardIndex);
+
+  const line=getWinningLine(
+    state.boards[boardIndex],
+    state.size,
+    true
+  );
+
+  if(line){
+    let localWinner=null;
+    for(const p of ["X","O"]){
+      if(line.every(i=>state.boards[boardIndex][i]===p ||
+                       state.boards[boardIndex][i]==="+")){
+        localWinner=p;
+        break;
+      }
+    }
+
+    state.completed[boardIndex]=localWinner;
+
+    if(
+      state.mode==="ultimateplus" &&
+      state.metaPlus < MAX_PLUS &&
+      rollPlus()
+    ){
+      state.meta[boardIndex]="+";
+      state.metaPlus++;
+    }else{
+      state.meta[boardIndex]=localWinner;
+    }
+
+    const metaLine=getWinningLine(state.meta,state.size,true);
+    if(metaLine){
+      for(const p of ["X","O"]){
+        if(metaLine.every(i=>state.meta[i]===p || state.meta[i]==="+")){
+          state.winner=p;
+          break;
+        }
+      }
+      state.over=true;
+    }
+  }else if(isFull(state.boards[boardIndex])){
+    state.completed[boardIndex]="D";
+  }
+
+  if(!state.over){
+    const nextBoard=cellIndex;
+
+    if(
+      state.completed[nextBoard] === null
+    ){
+      state.target=nextBoard;
+    }else{
+      state.target=null;
+    }
+
+    state.current=state.current==="X"?"O":"X";
+
+    if(state.completed.every(v=>v!==null)){
+      state.over=true;
+    }
+  }
+
+  render();
+}
+
+function addWinLine(button, line, index, size){
+  if(!line || !line.includes(index)) return;
+
+  const first=line[0];
+  const last=line[line.length-1];
+
+  const fr=Math.floor(first/size);
+  const fc=first%size;
+  const lr=Math.floor(last/size);
+  const lc=last%size;
+
+  const lineElement=document.createElement("span");
+  lineElement.className="win-line";
+
+  if(fr===lr) lineElement.classList.add("horizontal");
+  else if(fc===lc) lineElement.classList.add("vertical");
+  else if(lc>fc) lineElement.classList.add("diag-down");
+  else lineElement.classList.add("diag-up");
+
+  button.appendChild(lineElement);
+}
+
+function renderNormal(){
+  const root=document.getElementById("normal");
+  root.innerHTML="";
+
+  const grid=document.createElement("div");
+  grid.className="normal-grid";
+  grid.style.gridTemplateColumns=`repeat(${state.size}, minmax(0,1fr))`;
+
+  const line=state.over && state.winner
+    ? getWinningLine(state.cells,state.size,true)
+    : null;
+
+  state.cells.forEach((value,index)=>{
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="normal-cell "+(value ? value.toLowerCase() : "");
+    button.textContent=value || "";
+    button.disabled=state.over || value!==null;
+    button.onclick=()=>normalMove(index);
+
+    addWinLine(button,line,index,state.size);
+    grid.appendChild(button);
+  });
+
+  root.appendChild(grid);
+}
+
+function renderUltimate(){
+  const root=document.getElementById("ultimate");
+  root.innerHTML="";
+  root.style.gridTemplateColumns=`repeat(${state.size}, minmax(0,1fr))`;
+
+  state.boards.forEach((cells,boardIndex)=>{
+    const box=document.createElement("div");
+    box.className="local";
+
+    if(
+      state.target===boardIndex &&
+      state.completed[boardIndex]===null &&
+      !state.over
+    ){
+      box.classList.add("target");
+    }
+
+    const label=document.createElement("div");
+    label.className="label";
+
+    if(state.completed[boardIndex]===null){
+      label.textContent=`BOARD ${boardIndex+1}`;
+    }else if(state.completed[boardIndex]==="D"){
+      label.textContent=`BOARD ${boardIndex+1} · DRAW`;
+    }else{
+      label.textContent=`BOARD ${boardIndex+1} · ${state.meta[boardIndex]} WON`;
+    }
+
+    box.appendChild(label);
+
+    const grid=document.createElement("div");
+    grid.className="cells";
+    grid.style.gridTemplateColumns=`repeat(${state.size}, minmax(0,1fr))`;
+
+    const line=state.completed[boardIndex] &&
+               state.completed[boardIndex]!=="D"
+      ? getWinningLine(cells,state.size,true)
+      : null;
+
+    cells.forEach((value,cellIndex)=>{
+      const button=document.createElement("button");
+      button.type="button";
+      button.className="cell "+(value ? value.toLowerCase() : "");
+      button.textContent=value || "";
+
+      const targetLocked=
+        state.target!==null &&
+        state.completed[state.target]===null &&
+        state.target!==boardIndex;
+
+      button.disabled=
+        state.over ||
+        value!==null ||
+        state.completed[boardIndex]!==null ||
+        targetLocked;
+
+      button.onclick=()=>ultimateMove(boardIndex,cellIndex);
+
+      addWinLine(button,line,cellIndex,state.size);
+      grid.appendChild(button);
+    });
+
+    box.appendChild(grid);
+
+    if(state.completed[boardIndex]){
+      const result=document.createElement("div");
+      result.style.textAlign="center";
+      result.style.fontWeight="900";
+      result.style.fontSize="clamp(1rem,3vw,1.5rem)";
+      result.style.marginTop="4px";
+      result.textContent=state.meta[boardIndex];
+
+      if(state.meta[boardIndex]==="X") result.className="x";
+      if(state.meta[boardIndex]==="O") result.className="o";
+      if(state.meta[boardIndex]==="+") result.className="plus";
+
+      box.appendChild(result);
+    }
+
+    root.appendChild(box);
+  });
+}
+
+function renderRules(){
+  const text=document.getElementById("rulesText");
+
+  if(state.mode==="ttt"){
+    text.textContent=
+      "Get three Xs or Os in a row, column, or diagonal.";
+  }else if(state.mode==="tttplus"){
+    text.textContent=
+      "Play on a 4×4 board and get four in a row, column, or diagonal. " +
+      "Each move has a 1/6 chance to become +. A + counts for either player. " +
+      "You can have a maximum of 3 + symbols.";
+  }else if(state.mode==="ultimate"){
+    text.textContent=
+      "Win local boards to win the overall game. Your cell choice determines " +
+      "the opponent's next board. If that target board is already complete, " +
+      "the opponent may choose any available board.";
+  }else{
+    text.textContent=
+      "Ultimate Plus uses 4×4 local boards. Each local board can contain up to " +
+      "3 + symbols; each move has a 1/6 chance to become +. A + counts for either " +
+      "player when checking a local win. When a local board is won, its overall " +
+      "board result is X, O, or +. The meta-board has its own separate maximum " +
+      "of 3 + symbols, and a meta + counts for either player.";
+  }
+}
+
+function render(){
+  const normal=document.getElementById("normal");
+  const ultimate=document.getElementById("ultimateView");
+
+  if(state.mode==="ttt" || state.mode==="tttplus"){
+    normal.classList.remove("hidden");
+    ultimate.classList.add("hidden");
+    renderNormal();
+  }else{
+    normal.classList.add("hidden");
+    ultimate.classList.remove("hidden");
+    renderUltimate();
+  }
+
+  const status=document.getElementById("status");
+  const sub=document.getElementById("sub");
+
+  if(state.over){
+    status.textContent=state.winner
+      ? `Player ${state.winner} wins!`
+      : "It's a draw!";
+  }else{
+    status.textContent=`Player ${state.current}'s turn`;
+  }
+
+  let info="";
+
+  if(state.mode==="tttplus"){
+    info=`Plus symbols used: ${state.plusCount}/${MAX_PLUS}`;
+  }
+
+  if(state.mode==="ultimateplus"){
+    const total=state.localPlus.reduce((a,b)=>a+b,0);
+    const maximum=MAX_PLUS*state.boards.length;
+
+    info=
+      `Local + symbols: ${total}/${maximum} · ` +
+      `Meta + symbols: ${state.metaPlus}/${MAX_PLUS}`;
+  }
+
+  if(state.mode==="ultimate" || state.mode==="ultimateplus"){
+    if(!state.over){
+      if(state.target===null){
+        info+=(info?" · ":"")+"You may play in any available board.";
+      }else if(state.completed[state.target]===null){
+        info+=(info?" · ":"")+
+          `You must play in Board ${state.target+1}.`;
+      }else{
+        info+=(info?" · ":"")+
+          "Your target board is complete — choose any available board.";
+      }
+    }
+  }
+
+  sub.textContent=info;
+  renderRules();
+}
+
+document.getElementById("newGame").addEventListener("click",startGame);
+document.getElementById("mode").addEventListener("change",startGame);
+
+startGame();
+</script>
+</body>
+</html>

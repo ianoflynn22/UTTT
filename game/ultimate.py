@@ -1,3 +1,4 @@
+import random
 from game.board import Board
 
 
@@ -17,6 +18,8 @@ class UltimateGame:
         self.winner = None
         self.game_over = False
         self.target_board = None
+        self.plus_count = 0
+        self.max_plus = 3
 
     def parse_move(self, move):
         try:
@@ -104,3 +107,11 @@ class UltimateGame:
     def check_draw(self):
         if not self.get_available_boards() and self.winner is None:
             self.game_over = True
+
+    def get_move_symbol(self):
+        if self.board_size == 4 and self.plus_count < self.max_plus:
+            if random.randint(1, 6) == 1:
+                self.plus_count += 1
+                return "+"
+
+        return self.current_player
