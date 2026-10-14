@@ -1,0 +1,7 @@
+{
+  "appId": "com.utttplus.app",
+  "appName": "UTTT+",
+  "webDir": "public",
+  "server": { "url": "https://utttplus.com", "cleartext": false },
+  "backgroundColor": "#0b0f14"
+}

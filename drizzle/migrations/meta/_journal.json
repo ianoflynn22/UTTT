@@ -1,0 +1,139 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791996838272,
+      "tag": "0000_profiles_and_ratings",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791997297470,
+      "tag": "0001_online_games_matchmaking_elo",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791997349193,
+      "tag": "0002_online_elo_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791997411018,
+      "tag": "0003_friends_and_challenges",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791997818720,
+      "tag": "0004_elo_zero_start_and_history_deltas",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791997931003,
+      "tag": "0005_moves_log_and_game_analyses",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791998407624,
+      "tag": "0006_user_roles_and_admin_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791998545013,
+      "tag": "0007_admin_stats_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791998865889,
+      "tag": "0008_profiles_signed_in_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791999114941,
+      "tag": "0009_username_slur_filter",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791999184154,
+      "tag": "0010_username_filter_loosen",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791999372838,
+      "tag": "0011_invite_link_friendship",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792000206707,
+      "tag": "0012_puzzle_solves_and_streaks",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792001209040,
+      "tag": "0013_open_game_lobbies",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792002333445,
+      "tag": "0014_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792002495495,
+      "tag": "0015_fix_challenge_add_blocking",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792003315778,
+      "tag": "0016_unrated_friend_games_delete_game",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792003918165,
+      "tag": "0017_puzzle_scores",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792004057788,
+      "tag": "0018_rematch_any_opponent",
+      "breakpoints": true
+    }
+  ]
+}
