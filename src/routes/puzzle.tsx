@@ -13,6 +13,8 @@ import { submitPuzzleSolve } from "@/lib/puzzle.functions";
 import { flag } from "@/lib/countries";
 
 export const Route = createFileRoute("/puzzle")({
+  validateSearch: (s: Record<string, unknown>): { date?: string } =>
+    typeof s["date"] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s["date"]) ? { date: s["date"] } : {},
   staticData: { sitemap: true },
   head: () => ({
     meta: [
@@ -36,6 +38,8 @@ export const Route = createFileRoute("/puzzle")({
 const STORE = "uttt-puzzle-solved";
 const HINTED = "uttt-puzzle-hinted";
 const BEST = "uttt-puzzle-best";
+export const ARCHIVE = "uttt-puzzle-archive";
+export const ARCHIVE_START = "2026-10-01";
 type Row = { user_id: string; username: string; country: string; current_streak: number; best_streak: number };
 type ScoreRow = { user_id: string; username: string; country: string; moves: number; tries: number };
 
@@ -57,15 +61,25 @@ function PuzzlePage() {
   const user = useUser();
   const qc = useQueryClient();
   const submit = useServerFn(submitPuzzleSolve);
+  const { date } = Route.useSearch();
+  const [archive, setArchive] = useState(false);
 
   useEffect(() => {
-    const k = dateKey();
+    const today = dateKey();
+    const isPast = !!date && date < today && date >= ARCHIVE_START;
+    setArchive(isPast);
+    const k = isPast ? date! : today;
     setKey(k);
+    setResult(null); setHinted(false); setBanked(false); setBest(null); setMine([]); setLine([]); setStep(null); setLastScore(null); setTries(0);
     const solved: string[] = JSON.parse(localStorage.getItem(STORE) || "[]");
     if (solved.includes(k)) setResult("solved");
     const hintedDays: string[] = JSON.parse(localStorage.getItem(HINTED) || "[]");
     if (hintedDays.includes(k)) setHinted(true);
     if (solved.includes(k)) setBanked(true);
+    if (isPast) {
+      const done: Record<string, number> = JSON.parse(localStorage.getItem(ARCHIVE) || "{}");
+      if (typeof done[k] === "number") { setBest(done[k]!); setBanked(true); }
+    }
     const bests: Record<string, number> = JSON.parse(localStorage.getItem(BEST) || "{}");
     if (typeof bests[k] === "number") setBest(bests[k]!);
     let s = 0;
@@ -76,7 +90,7 @@ function PuzzlePage() {
       d.setUTCDate(d.getUTCDate() - 1);
     }
     setStreak(s);
-  }, []);
+  }, [date]);
 
   const puzzle = useMemo(() => (key ? dailyPuzzle(key) : null), [key]);
   useEffect(() => {
@@ -111,11 +125,13 @@ function PuzzlePage() {
 
   const useHint = () => {
     if (
+      !archive &&
       !hinted &&
       !window.confirm("Using a hint ends your current streak, and today won't count towards a new one. Show a hint?")
     )
       return;
-    if (!hinted) {
+    if (archive) setHinted(true);
+    else if (!hinted) {
       const h: string[] = JSON.parse(localStorage.getItem(HINTED) || "[]");
       localStorage.setItem(HINTED, JSON.stringify([...h, key]));
       setHinted(true);
@@ -144,6 +160,14 @@ function PuzzlePage() {
       const score = nextMine.length;
       setLastScore(score);
       setBanked(true);
+      if (archive) {
+        // Archive puzzles are practice: saved on this device only, never streaks or leaderboards.
+        const done: Record<string, number> = JSON.parse(localStorage.getItem(ARCHIVE) || "{}");
+        if (typeof done[key] !== "number" || score < done[key]!) done[key] = score;
+        localStorage.setItem(ARCHIVE, JSON.stringify(done));
+        setBest((b) => (b === null ? score : Math.min(b, score)));
+        return;
+      }
       const bests: Record<string, number> = JSON.parse(localStorage.getItem(BEST) || "{}");
       if (typeof bests[key] !== "number" || score < bests[key]!) {
         bests[key] = score;
@@ -191,13 +215,15 @@ function PuzzlePage() {
   return (
     <main className="min-h-screen px-4 py-8">
       <div className="mx-auto max-w-5xl text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">Daily puzzle · {key}</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">{archive ? "Archive puzzle · practice" : "Daily puzzle"} · {key}</p>
         <h1 className="mt-2 font-display text-3xl font-bold">
           <span className={cn(markClass(side))}>{side}</span> to play and win
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Beat the Bot from this position. Par is {puzzle.attackerMoves} moves — can you find a faster win? Lose or draw
-          and it resets. Streak: <span className="font-mono text-primary">{streak}</span>
+          and it resets.{" "}
+          {archive ? "Practice only — doesn't affect your streak." : <>Streak: <span className="font-mono text-primary">{streak}</span></>}{" "}
+          <Link to="/puzzle/archive" className="underline hover:text-foreground">Past puzzles</Link>
         </p>
 
         <p className="mt-3 min-h-7 font-display text-lg font-bold" aria-live="polite">
