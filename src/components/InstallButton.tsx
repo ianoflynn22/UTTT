@@ -10,20 +10,34 @@ export function InstallButton() {
   const [tip, setTip] = useState(false);
   useEffect(() => {
     if (window.matchMedia("(display-mode: standalone)").matches) return;
-    const h = (e: Event) => { e.preventDefault(); setEvt(e as BIP); };
+    const h = (e: Event) => {
+      e.preventDefault();
+      setEvt(e as BIP);
+    };
     window.addEventListener("beforeinstallprompt", h);
-    setIos(/iphone|ipad|ipod/i.test(navigator.userAgent) && !("standalone" in navigator && (navigator as { standalone?: boolean }).standalone));
+    setIos(
+      /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+        !("standalone" in navigator && (navigator as { standalone?: boolean }).standalone),
+    );
     return () => window.removeEventListener("beforeinstallprompt", h);
   }, []);
   if (!evt && !ios) return null;
   const click = async () => {
-    if (evt) { await evt.prompt(); await evt.userChoice; setEvt(null); }
-    else setTip((t) => !t);
+    if (evt) {
+      await evt.prompt();
+      await evt.userChoice;
+      setEvt(null);
+    } else setTip((t) => !t);
   };
   return (
     <div className="relative">
-      <button type="button" onClick={click} aria-label="Install the app" title="Install the app"
-        className="ml-1 flex shrink-0 items-center gap-1 rounded-md border px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <button
+        type="button"
+        onClick={click}
+        aria-label="Install the app"
+        title="Install the app"
+        className="ml-1 inline-flex h-9 w-9 sm:w-auto shrink-0 items-center justify-center gap-1.5 rounded-md border sm:px-3 text-sm text-muted-foreground hover:text-foreground"
+      >
         <Download className="h-4 w-4" /> <span className="hidden sm:inline">Install</span>
       </button>
       {tip && (
