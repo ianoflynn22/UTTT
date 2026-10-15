@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { applyMove, isLegal, type GameState, type Move } from "@/lib/game";
-import { dailyPuzzle, dateKey, defenderReply, hintMove } from "@/lib/puzzle";
+import { dailyPuzzle, dateKey, defenderReply, hintMove, type DailyPuzzle } from "@/lib/puzzle";
 import { BoardView, markClass } from "@/components/GameBoard";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,15 @@ function PuzzlePage() {
     setArchive(isPast);
     const k = isPast ? date! : today;
     setKey(k);
-    setResult(null); setHinted(false); setBanked(false); setBest(null); setMine([]); setLine([]); setStep(null); setLastScore(null); setTries(0);
+    setResult(null);
+    setHinted(false);
+    setBanked(false);
+    setBest(null);
+    setMine([]);
+    setLine([]);
+    setStep(null);
+    setLastScore(null);
+    setTries(0);
     const solved: string[] = JSON.parse(localStorage.getItem(STORE) || "[]");
     if (solved.includes(k)) setResult("solved");
     const hintedDays: string[] = JSON.parse(localStorage.getItem(HINTED) || "[]");
@@ -78,7 +86,10 @@ function PuzzlePage() {
     if (solved.includes(k)) setBanked(true);
     if (isPast) {
       const done: Record<string, number> = JSON.parse(localStorage.getItem(ARCHIVE) || "{}");
-      if (typeof done[k] === "number") { setBest(done[k]!); setBanked(true); }
+      if (typeof done[k] === "number") {
+        setBest(done[k]!);
+        setBanked(true);
+      }
     }
     const bests: Record<string, number> = JSON.parse(localStorage.getItem(BEST) || "{}");
     if (typeof bests[k] === "number") setBest(bests[k]!);
@@ -215,17 +226,23 @@ function PuzzlePage() {
   return (
     <main className="min-h-screen px-4 py-8">
       <div className="mx-auto max-w-5xl text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">{archive ? "Archive puzzle · practice" : "Daily puzzle"} · {key}</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
+          {archive ? "Archive puzzle · practice" : "Daily puzzle"} · {key}
+        </p>
         <h1 className="mt-2 font-display text-3xl font-bold">
           <span className={cn(markClass(side))}>{side}</span> to play and win
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Beat the Bot from this position. Par is {puzzle.attackerMoves} moves — can you find a faster win? Lose or draw
           and it resets.{" "}
-          {archive ? "Practice only — doesn't affect your streak." : <>Streak: <span className="font-mono text-primary">{streak}</span></>}{" "}
-          <Link to="/puzzle/archive" className="underline hover:text-foreground">Past puzzles</Link>
+          {archive ? (
+            "Practice only — doesn't affect your streak."
+          ) : (
+            <>
+              Streak: <span className="font-mono text-primary">{streak}</span>
+            </>
+          )}
         </p>
-
         <p className="mt-3 min-h-7 font-display text-lg font-bold" aria-live="polite">
           {solved
             ? `Solved in ${lastScore ?? puzzle.attackerMoves} of your moves.`
@@ -283,6 +300,7 @@ function PuzzlePage() {
                 tries={tries + 1}
                 hinted={hinted}
                 final={frames[frames.length - 1]!}
+                puzzle={puzzle}
               />
             </div>
           </>
@@ -344,15 +362,18 @@ function ShareResult({
   tries,
   hinted,
   final,
+  puzzle,
 }: {
   day: string;
   moves: number;
   tries: number;
   hinted: boolean;
   final: GameState;
+  puzzle?: DailyPuzzle | null;
 }) {
   const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [showAdminMoves, setShowAdminMoves] = useState(false);
   const user = useUser();
   const { data: isAdmin } = useQuery({
     queryKey: ["my-roles", user?.id],
@@ -382,27 +403,51 @@ function ShareResult({
     <>
       <button
         onClick={copy}
-        className="rounded-full border px-4 py-1.5 font-bold text-muted-foreground hover:text-foreground"
+        className="rounded-full bg-primary px-5 py-1.5 font-bold text-primary-foreground shadow-sm transition hover:opacity-90"
       >
         {copied ? "Copied!" : "Share result"}
       </button>
-      {isAdmin && (
-        <button
-          onClick={() => setPreview((p) => !p)}
-          className="rounded-full border px-4 py-1.5 text-muted-foreground hover:text-foreground"
-        >
-          {preview ? "Hide preview" : "Preview result"}
-        </button>
-      )}
-      {isAdmin && preview && (
-        <pre className="mx-auto mt-3 max-w-xs whitespace-pre-wrap rounded-xl border bg-card p-3 text-left text-xs">
+      <button
+        onClick={() => setPreview((p) => !p)}
+        className="rounded-full border px-4 py-1.5 text-muted-foreground hover:text-foreground"
+      >
+        {preview ? "Hide preview" : "Preview text"}
+      </button>
+      {preview && (
+        <pre className="basis-full mx-auto mt-3 max-w-xs whitespace-pre-wrap rounded-xl border bg-card p-3 text-left font-mono text-xs">
           {text}
         </pre>
+      )}
+      {isAdmin && puzzle && (
+        <>
+          <button
+            onClick={() => setShowAdminMoves((s) => !s)}
+            className="rounded-full border border-amber-500/40 px-3 py-1 text-xs font-mono text-amber-500 hover:bg-amber-500/10"
+          >
+            {showAdminMoves ? "Hide Par moves" : `View Par line (${puzzle.attackerMoves} moves)`}
+          </button>
+          {showAdminMoves && (
+            <div className="basis-full mx-auto mt-2 max-w-sm rounded-xl border border-amber-500/30 bg-card p-3 text-left font-mono text-xs">
+              <div className="font-bold text-amber-500 mb-1.5">Winning sequence (board, cell):</div>
+              <div className="flex flex-wrap gap-1.5">
+                {puzzle.line.map((m, idx) => (
+                  <span
+                    key={idx}
+                    className={`rounded px-1.5 py-0.5 ${
+                      idx % 2 === 0 ? "bg-primary/20 text-foreground font-semibold" : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {idx % 2 === 0 ? "You" : "Bot"}: B{m.b + 1} C{m.c + 1}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </>
   );
 }
-
 function TodayScores({ day, signedIn }: { day: string; signedIn: boolean }) {
   const { data } = useQuery({
     queryKey: ["puzzle-day-scores", day],
@@ -417,23 +462,23 @@ function TodayScores({ day, signedIn }: { day: string; signedIn: boolean }) {
   const rows = data ?? [];
   return (
     <>
-    <NextPuzzleCountdown />
-    <section className="mx-auto mt-4 max-w-3xl rounded-xl border bg-card p-4 text-left">
-      <h2 className="font-display text-base font-bold">Today's best scores</h2>
-      <p className="mt-1 text-xs text-muted-foreground">Fewest of your own moves to win today's puzzle.</p>
-      <ol className="mt-3 space-y-1 text-sm">
-        {rows.length === 0 && <li className="text-muted-foreground">No scores yet — be the first.</li>}
-        {rows.map((r, i) => (
-          <li key={r.user_id} className="flex justify-between">
-            <span>
-              <span className="mr-2 font-mono text-muted-foreground">{i + 1}.</span>
-              {flag(r.country)} {r.username}
-            </span>
-            <span className="font-display font-bold text-primary">{r.moves}</span>
-          </li>
-        ))}
-      </ol>
-    </section>
+      <NextPuzzleCountdown />
+      <section className="mx-auto mt-4 max-w-3xl rounded-xl border bg-card p-4 text-left">
+        <h2 className="font-display text-base font-bold">Today's best scores</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Fewest of your own moves to win today's puzzle.</p>
+        <ol className="mt-3 space-y-1 text-sm">
+          {rows.length === 0 && <li className="text-muted-foreground">No scores yet — be the first.</li>}
+          {rows.map((r, i) => (
+            <li key={r.user_id} className="flex justify-between">
+              <span>
+                <span className="mr-2 font-mono text-muted-foreground">{i + 1}.</span>
+                {flag(r.country)} {r.username}
+              </span>
+              <span className="font-display font-bold text-primary">{r.moves}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
     </>
   );
 }
@@ -491,7 +536,6 @@ function StreakBoard({ signedIn }: { signedIn: boolean }) {
     </section>
   );
 }
-
 function NextPuzzleCountdown() {
   const [left, setLeft] = useState<string | null>(null);
   useEffect(() => {
@@ -509,6 +553,10 @@ function NextPuzzleCountdown() {
   return (
     <p className="mx-auto mt-10 max-w-3xl text-center font-mono text-sm text-muted-foreground">
       Next puzzle in <span className="font-bold text-foreground">{left ?? "--:--:--"}</span>
+      {" · "}
+      <Link to="/puzzle/archive" className="font-sans underline hover:text-foreground">
+        Past puzzles →
+      </Link>
     </p>
   );
 }
