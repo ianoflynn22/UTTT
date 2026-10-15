@@ -24,7 +24,9 @@ export const Route = createFileRoute("/puzzle")({
       { property: "og:title", content: "Daily Ultimate Tic-Tac-Toe Puzzle" },
       { property: "og:description", content: "Beat the defender in 5+ moves. New puzzle every day." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:image", content: "https://utttplus.com/og-image.png" },
+      { name: "twitter:image", content: "https://utttplus.com/og-image.png" },
     ],
     links: [{ rel: "canonical", href: "https://utttplus.com/puzzle" }],
   }),
@@ -385,10 +387,12 @@ function TodayScores({ day, signedIn }: { day: string; signedIn: boolean }) {
       return (data ?? []) as ScoreRow[];
     },
   });
-  if (!signedIn) return null;
+  if (!signedIn) return <NextPuzzleCountdown />;
   const rows = data ?? [];
   return (
-    <section className="mx-auto mt-10 max-w-3xl rounded-xl border bg-card p-4 text-left">
+    <>
+    <NextPuzzleCountdown />
+    <section className="mx-auto mt-4 max-w-3xl rounded-xl border bg-card p-4 text-left">
       <h2 className="font-display text-base font-bold">Today's best scores</h2>
       <p className="mt-1 text-xs text-muted-foreground">Fewest of your own moves to win today's puzzle.</p>
       <ol className="mt-3 space-y-1 text-sm">
@@ -404,6 +408,7 @@ function TodayScores({ day, signedIn }: { day: string; signedIn: boolean }) {
         ))}
       </ol>
     </section>
+    </>
   );
 }
 
@@ -458,5 +463,26 @@ function StreakBoard({ signedIn }: { signedIn: boolean }) {
         </div>
       ))}
     </section>
+  );
+}
+
+function NextPuzzleCountdown() {
+  const [left, setLeft] = useState<string | null>(null);
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+      const s = Math.max(0, Math.floor((next - now.getTime()) / 1000));
+      const p = (n: number) => String(n).padStart(2, "0");
+      setLeft(`${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <p className="mx-auto mt-10 max-w-3xl text-center font-mono text-sm text-muted-foreground">
+      Next puzzle in <span className="font-bold text-foreground">{left ?? "--:--:--"}</span>
+    </p>
   );
 }
