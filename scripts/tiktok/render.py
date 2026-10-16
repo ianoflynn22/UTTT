@@ -36,6 +36,17 @@ def center(d, y, text, f, fill):
     d.text(((W - w) / 2, y), text, font=f, fill=fill)
 
 
+def draw_turn_badge(d, current_player, is_attacker):
+    """Draw a clean pill badge showing whose turn it is."""
+    y = 430
+    w, h = 420, 60
+    x = (W - w) / 2
+    col = X if current_player == "X" else O
+    label = f"🔴 X's Turn ({'You' if is_attacker else 'Bot'})" if current_player == "X" else f"🟢 O's Turn ({'Bot' if is_attacker else 'You'})"
+    d.rounded_rectangle([x, y, x + w, y + h], 30, fill=PANEL, outline=col, width=3)
+    center(d, y + 10, label, font(34, True), col)
+
+
 def draw_board(d, st, last=None, flash=False):
     size, x0, y0 = 960, 60, 520
     cell = size / 9
@@ -77,14 +88,21 @@ def draw_board(d, st, last=None, flash=False):
         d.line([x0, y0 + i * size / 3, x0 + size, y0 + i * size / 3], fill=FG, width=6)
 
 
-def frame(data, idx, title, sub, sub_col=FG, flash=False, banner=None):
+def frame(data, idx, title, sub, sub_col=FG, flash=False, banner=None, show_turn=True):
     img = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(img)
-    center(d, 110, "UTTT+", F_MED, GOLD)
-    center(d, 230, title, F_BIG, FG)
-    center(d, 360, sub, F_SMALL, sub_col)
+    center(d, 100, "UTTT+", F_MED, GOLD)
+    center(d, 210, title, F_BIG, FG)
+    center(d, 330, sub, F_SMALL, sub_col)
+
+    st = data["states"][idx]
+    if show_turn and not banner:
+        curr_player = data["attacker"] if (idx % 2 == 0) else ("O" if data["attacker"] == "X" else "X")
+        draw_turn_badge(d, curr_player, is_attacker=(curr_player == data["attacker"]))
+
     last = data["moves"][idx - 1] if idx > 0 else None
-    draw_board(d, data["states"][idx], last, flash)
+    draw_board(d, st, last, flash)
+
     if banner:
         d.rounded_rectangle([90, 1560, W - 90, 1800], 36, fill=banner[2])
         center(d, 1590, banner[0], F_BIG, FG)
@@ -100,23 +118,33 @@ def render(data, out):
          "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-shortest",
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "23", "-c:a", "aac", "-movflags", "+faststart", out],
         stdin=subprocess.PIPE)
+
     def hold(buf, secs):
         for _ in range(int(secs * FPS)):
             ff.stdin.write(buf)
-    you = "You" if data["attacker"] == "X" else "You"
+
     par = data["par"]
-    hold(frame(data, 0, "Today's puzzle", f"Win in {par} moves (Par {par}). Can you?", GOLD), 2.2)
+    # 1. Opening hook
+    hold(frame(data, 0, "Today's puzzle", f"Win in {par} moves (Par {par}). Can you?", GOLD), 2.5)
+
+    # 2. Sequential moves at readable 1.6s pace
     b = data["blunderAt"]
     for i in range(1, b + 1):
-        who = "Good move..." if i % 2 == 1 else "Bot defends"
-        hold(frame(data, i, "Looking good", who), 0.9)
-    hold(frame(data, b + 1, "Hmm...", "Is this the move?", GOLD), 1.0)
+        is_att = (i % 2 == 1)
+        who = "X takes a board!" if (any(data["states"][i]["completed"]) and not any(data["states"][i-1]["completed"]) and is_att) else ("Great move!" if is_att else "Bot defends")
+        hold(frame(data, i, "Looking good", who, GOLD if "takes" in who else FG), 1.6)
+
+    # 3. Hesitation & Blunder
+    hold(frame(data, b + 1, "Hmm...", "Is this the right move?", GOLD), 1.4)
     end = len(data["moves"])
-    msg = "Bot wins the game" if data["lost"] else "Bot takes a board"
+    msg = "Bot wins the game" if data["lost"] else "Bot steals the board"
     for k in range(6):
-        hold(frame(data, end, "BLUNDER", msg, RED, flash=k % 2 == 0, banner=("FAILED", "Try again?", RED)), 0.18)
-    hold(frame(data, end, "BLUNDER", msg, RED, flash=True, banner=("FAILED", "Try again?", RED)), 2.8)
-    hold(frame(data, 0, "Can you beat it?", "New puzzle every day", GOLD, banner=("utttplus.com", "Link in bio", (170, 120, 20))), 3.0)
+        hold(frame(data, end, "BLUNDER ❌", msg, RED, flash=k % 2 == 0, banner=("FAILED", "Can you beat it?", RED), show_turn=False), 0.2)
+    hold(frame(data, end, "BLUNDER ❌", msg, RED, flash=True, banner=("FAILED", "Can you beat it?", RED), show_turn=False), 2.5)
+
+    # 4. Outro Call to Action
+    hold(frame(data, 0, "Daily Challenge", "Solve it before midnight", GOLD, banner=("utttplus.com", "Free in bio · No download", (170, 120, 20)), show_turn=False), 3.0)
+
     ff.stdin.close()
     if ff.wait() != 0:
         sys.exit("ffmpeg failed")
@@ -129,7 +157,7 @@ def post(out, data):
         print("DISCORD_WEBHOOK_URL not set; skipping post")
         return
     caption = (f"🧩 Daily puzzle {data['date']} — Par {data['par']}\n\n"
-               "Caption:\nToday's puzzle is brutal 💀 Can you do better? Play free at utttplus.com "
+               "Caption:\nToday's puzzle got me 💀 Can you find the winning line? Play free at utttplus.com "
                "#ultimatetictactoe #puzzle #dailygame #brainteaser #tictactoe #fyp")
     with open(out, "rb") as f:
         r = requests.post(url, data={"payload_json": json.dumps({"content": caption})},
