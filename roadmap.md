@@ -49,3 +49,5 @@
 
 - [x] Puzzle: Share result button (Wordle-style grid + copy)
 - [x] Puzzle: result preview visible only on Ian's admin account
+- [ ] Batch 2: puzzle archive page, sounds+mute, install button, challenge previews
+- [ ] TikTok daily clips → Discord
