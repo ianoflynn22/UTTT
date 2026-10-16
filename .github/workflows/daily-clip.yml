@@ -1,0 +1,25 @@
+name: Daily puzzle clip
+on:
+  schedule:
+    - cron: "5 0 * * *" # 00:05 UTC, just after the new puzzle
+  workflow_dispatch: {}
+jobs:
+  clip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - run: pip install pillow requests
+      - name: Render and post
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: bun scripts/tiktok/data.ts > clip.json && python3 scripts/tiktok/render.py clip.mp4 < clip.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daily-clip
+          path: clip.mp4
+          retention-days: 7
