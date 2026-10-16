@@ -1,3 +1,5 @@
+import { playSound } from "@/lib/sound";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { findWin, isPlusMode, MAX_PLUS, type GameState, type Mark, type Move } from "@/lib/game";
 
@@ -39,6 +41,17 @@ export function GameBoard({
 /** Full board section for a game state: single board or the ultimate grid, plus counters. */
 export function BoardView({ state, locked, onPlay, hintBoard, hintCell }: { state: GameState; locked: boolean; onPlay: (m: Move) => void; hintBoard?: number | null; hintCell?: Move | null }) {
   const plus = isPlusMode(state.mode);
+  const filled = state.boards.flat().filter((c) => c !== null).length;
+  const captured = state.completed.filter((c) => c !== null).length;
+  const prev = useRef<{ filled: number; captured: number; over: boolean } | null>(null);
+  useEffect(() => {
+    const p = prev.current;
+    prev.current = { filled, captured, over: state.over };
+    if (!p || filled <= p.filled) return;
+    if (state.over && !p.over) playSound("win");
+    else if (captured > p.captured) playSound("capture");
+    else playSound("move");
+  }, [filled, captured, state.over]);
   return (
     <section className="mx-auto mt-6" style={{ maxWidth: state.ultimate ? 720 : 440 }}>
       {plus && (
