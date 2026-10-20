@@ -19,5 +19,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: explainer-clip
-          path: explainer.mp4
+          path: explainer-*.mp4
           retention-days: 7
