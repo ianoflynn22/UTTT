@@ -206,20 +206,55 @@ def draw_board(d, st, last=None, flash=False, glow=(), free=False, locked=None, 
 
 
 def draw_arrow(d, g, b, c, to, col=GOLD, t=1.0):
+    """Shaft stops where the head starts; the head's tip lands on the target."""
     import math
     a = g.cell_center(b, c)
     z = g.board_center(to)
     if a == z:
         return
     z = (a[0] + (z[0] - a[0]) * t, a[1] + (z[1] - a[1]) * t)
-    d.line([a, z], fill=(*BG, 255), width=26)
-    d.line([a, z], fill=col, width=16)
-    ang = math.atan2(z[1] - a[1], z[0] - a[0])
-    s = 52
-    pts = [z, (z[0] - s * math.cos(ang - 0.45), z[1] - s * math.sin(ang - 0.45)),
-           (z[0] - s * math.cos(ang + 0.45), z[1] - s * math.sin(ang + 0.45))]
-    d.polygon(pts, fill=col)
-    d.ellipse([a[0] - 14, a[1] - 14, a[0] + 14, a[1] + 14], fill=col)
+    dx, dy = z[0] - a[0], z[1] - a[1]
+    dist = math.hypot(dx, dy)
+    if dist < 10:
+        return
+    ang = math.atan2(dy, dx)
+    head_len, head_w = min(56, dist * 0.6), 40
+    base = (z[0] - head_len * math.cos(ang), z[1] - head_len * math.sin(ang))
+    nx, ny = -math.sin(ang), math.cos(ang)
+    head = [z, (base[0] + nx * head_w, base[1] + ny * head_w), (base[0] - nx * head_w, base[1] - ny * head_w)]
+    d.line([a, base], fill=(*BG, 255), width=28)
+    d.polygon(head, fill=(*BG, 255), outline=(*BG, 255), width=6)
+    d.line([a, base], fill=col, width=16)
+    d.polygon(head, fill=col)
+    d.ellipse([a[0] - 16, a[1] - 16, a[0] + 16, a[1] + 16], fill=col)
+
+
+VOICE = "en-US-AndrewMultilingualNeural"  # energetic
+RATE, PITCH = "+15%", "+4Hz"
+
+
+def speakable(text):
+    # "U-T-T-T" reads as letters in one breath; full stops between letters cause robotic pauses.
+    return text.replace("U. T. T. T.", "U-T-T-T").replace("+", " plus")
+
+
+async def tts(text, path):
+    import asyncio, edge_tts
+    text = speakable(text)
+    for attempt in range(4):  # the voice service occasionally drops a request
+        try:
+            await edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH).save(path)
+            return
+        except Exception as e:
+            print("voice retry", attempt + 1, e)
+            await asyncio.sleep(2 * (attempt + 1))
+    raise SystemExit(f"Voiceover failed for: {text}")
+
+
+def audio_duration(path):
+    import subprocess
+    out = subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path])
+    return float(out.strip())
 
 
 def turn_badge(d, player, is_you, y=440):
