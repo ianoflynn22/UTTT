@@ -58,10 +58,10 @@ function claimed(s: GameState, b: number, p: Player, line: number[]): GameState 
   return t;
 }
 
-const CTA_SAY = "Think you can beat the Bot? Play free right now, at U. T. T. T. Plus dot com!";
+const CTA_SAY = "Tic-Tac-Toe, evolved. Play daily puzzles or live games free, at U-T-T-T Plus dot com!";
 const cta = (s: GameState): Scene => ({
   say: CTA_SAY,
-  frames: [frame(s, { title: "Think you can win?", sub: "Free · No download · Daily puzzle", banner: "utttplus.com" })],
+  frames: [frame(s, { title: "Tic-Tac-Toe, evolved.", sub: "Daily puzzles · Live games · Free", banner: "utttplus.com" })],
 });
 
 function goldenRule(): Scene[] {
