@@ -11,6 +11,7 @@ import { GameAdLayout } from "@/components/AdBanner";
 import { track } from "@/lib/analytics";
 const trackedGames = new Set<string>();
 import { cn } from "@/lib/utils";
+import { matchShareText } from "@/lib/match-share";
 
 export const Route = createFileRoute("/_authenticated/online/$gameId")({
   staticData: { sitemap: false },
@@ -237,6 +238,12 @@ function OnlineGame() {
               Rematch
             </button>
           )}
+          {finished && !game.friendGame && (
+            <Link to="/online" search={{ auto: game.mode }} className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+              Play next match
+            </Link>
+          )}
+          {finished && <ShareMatch game={game} winner={winner} />}
           <Link to="/online" className="rounded-md border bg-card px-4 py-2 text-sm">Back to lobby</Link>
         </div>
       </div>
@@ -348,5 +355,32 @@ function Replay({ game, winner }: { game: Awaited<ReturnType<typeof getGame>>; w
       <p className="mt-1 text-center text-xs text-muted-foreground">Use ← → keys to step through moves</p>
       <BoardView state={view} locked onPlay={() => {}} hintBoard={view.over ? null : view.target} />
     </>
+  );
+}
+
+function ShareMatch({ game, winner }: { game: NonNullable<Awaited<ReturnType<typeof getGame>>>; winner: Player | null }) {
+  const [copied, setCopied] = useState(false);
+  const delta = game.myRole === "X" ? game.elo?.xDelta ?? null : game.elo?.oDelta ?? null;
+  const text = matchShareText({
+    modeName: MODE_INFO[game.mode].name,
+    result: !winner ? "draw" : winner === game.myRole ? "win" : "loss",
+    opponent: game.opponent?.username ?? null,
+    delta,
+    moves: game.moves?.length ?? 0,
+    resigned: !!game.resigned,
+    rated: !game.friendGame,
+  });
+  const share = async () => {
+    if (navigator.share) {
+      try { await navigator.share({ text }); return; } catch { /* cancelled, fall back to copy */ }
+    }
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button onClick={share} className="rounded-md border border-primary px-4 py-2 text-sm font-bold text-primary">
+      {copied ? "Copied!" : "Share match"}
+    </button>
   );
 }

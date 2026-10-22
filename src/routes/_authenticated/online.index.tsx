@@ -21,13 +21,16 @@ export const Route = createFileRoute("/_authenticated/online/")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): { auto?: Mode } =>
+    typeof s["auto"] === "string" && s["auto"] in MODE_INFO ? { auto: s["auto"] as Mode } : {},
   component: OnlinePage,
 });
 
 function OnlinePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [mode, setMode] = useState<Mode>("ultimate");
+  const { auto } = Route.useSearch();
+  const [mode, setMode] = useState<Mode>(auto ?? "ultimate");
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const findMatchFn = useServerFn(findMatch);
@@ -60,6 +63,14 @@ function OnlinePage() {
       setSearching(true);
     }
   };
+
+  // "Play next match" from a finished game lands here with ?auto=<mode> and starts searching at once.
+  useEffect(() => {
+    if (!auto) return;
+    navigate({ to: "/online", search: {}, replace: true });
+    void start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cancel = async () => {
     setSearching(false);

@@ -51,3 +51,12 @@
 - [x] Puzzle: result preview visible only on Ian's admin account
 - [ ] Batch 2: puzzle archive page, sounds+mute, install button, challenge previews
 - [ ] TikTok daily clips → Discord
+- [x] Match replay stepper (buttons + arrow keys), Elo before→after cards, resignations shown as wins
+- [x] Finished game: "Play next match" (straight back into matchmaking) + "Share match" card
+- [x] Play Store icon 512 + feature graphic 1024x500 (in Files)
+
+## Tomorrow
+- [ ] Play Store screenshots (phone frames of game, puzzle, replay)
+- [ ] Admin retention stats (returning players, games per player)
+- [ ] Spectate / online dot for friends
+- [ ] Weekly leaderboard
