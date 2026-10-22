@@ -103,6 +103,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           elo_applied: boolean
+          elo_before_o: number | null
+          elo_before_x: number | null
           elo_delta_o: number | null
           elo_delta_x: number | null
           id: string
@@ -120,6 +122,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           elo_applied?: boolean
+          elo_before_o?: number | null
+          elo_before_x?: number | null
           elo_delta_o?: number | null
           elo_delta_x?: number | null
           id?: string
@@ -137,6 +141,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           elo_applied?: boolean
+          elo_before_o?: number | null
+          elo_before_x?: number | null
           elo_delta_o?: number | null
           elo_delta_x?: number | null
           id?: string
