@@ -21,6 +21,11 @@ export interface OnlineGameInfo {
   createdByMe: boolean;
   friendGame: boolean;
   winner: Player | null;
+  /** Finished games only: moves played, and each player's rating before/change (null if unrated or not recorded). */
+  moves?: Move[];
+  myName?: string;
+  elo?: { xBefore: number | null; oBefore: number | null; xDelta: number | null; oDelta: number | null };
+  resigned?: boolean;
 }
 
 export const findMatch = createServerFn({ method: "POST" })
@@ -104,7 +109,17 @@ export const getGame = createServerFn({ method: "POST" })
       context.supabase.from("ratings").select("elo").eq("user_id", context.userId).eq("mode", g.mode).single(),
     ]);
     void oppId_;
+    const moves: Move[] = (Array.isArray(g.moves) ? g.moves : [])
+      .map((m) => m as { b?: unknown; c?: unknown })
+      .filter((m) => typeof m.b === "number" && typeof m.c === "number")
+      .map((m) => ({ b: m.b as number, c: m.c as number }));
+    const me = await context.supabase.from("profiles").select("username").eq("id", context.userId).single();
+    const row = g as typeof g & { elo_before_x?: number | null; elo_before_o?: number | null };
     return {
+      moves,
+      myName: me.data?.username ?? "You",
+      elo: { xBefore: row.elo_before_x ?? null, oBefore: row.elo_before_o ?? null, xDelta: g.elo_delta_x, oDelta: g.elo_delta_o },
+      resigned: g.status === "finished" && !!g.winner && state?.winner !== g.winner,
       id: g.id,
       mode: g.mode as Mode,
       status: g.status as OnlineGameInfo["status"],

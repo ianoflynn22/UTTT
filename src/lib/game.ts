@@ -216,3 +216,23 @@ export function fromJson(mode: Mode, raw: unknown): GameState | null {
     lastMove,
   };
 }
+
+/**
+ * Rebuilds every position of a finished game from its move list.
+ * Pluses are random, so we read the final board to know which moves became "+"
+ * (a placed mark is never overwritten). Returns [start, after move 1, ...].
+ */
+export function replayStates(mode: Mode, moves: Move[], final: GameState | null): GameState[] {
+  const out: GameState[] = [newGame(mode)];
+  for (const m of moves) {
+    const s = out[out.length - 1]!;
+    if (!isLegal(s, m)) break;
+    const queue: number[] = [];
+    if (isPlusMode(mode)) {
+      if (s.localPlus[m.b]! < MAX_PLUS) queue.push(final?.boards[m.b]?.[m.c] === "+" ? 0 : 1);
+      queue.push(final?.meta[m.b] === "+" ? 0 : 1);
+    }
+    out.push(applyMove(s, m, () => queue.shift() ?? 1));
+  }
+  return out;
+}

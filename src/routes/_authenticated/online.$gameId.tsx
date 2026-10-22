@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BoardView, markClass } from "@/components/GameBoard";
-import { MODE_INFO, type Move } from "@/lib/game";
+import { MODE_INFO, replayStates, type GameState, type Move, type Player } from "@/lib/game";
 import { flag } from "@/lib/countries";
 import { getGame, makeMove, resign } from "@/lib/online-api";
 import { GameAdLayout } from "@/components/AdBanner";
@@ -109,13 +109,15 @@ function OnlineGame() {
     );
   }
 
+  const finished = game.status === "finished" || game.state.over;
+  // The match record is the source of truth: a resignation has a winner even though the board doesn't.
+  const winner: Player | null = finished ? (game.winner ?? game.state.winner) : null;
   const state = game.state;
   const oppName = game.opponent ? `${flag(game.opponent.country)} ${game.opponent.username}` : "player";
   const waiting = game.status === "waiting";
-  const finished = game.status === "finished" || state.over;
   if (finished && typeof window !== "undefined" && !trackedGames.has(game.id)) {
     trackedGames.add(game.id);
-    track("game_complete", { mode: game.mode, type: "online", result: state.winner === null ? "draw" : state.winner === game.myRole ? "win" : "loss" });
+    track("game_complete", { mode: game.mode, type: "online", result: winner === null ? "draw" : winner === game.myRole ? "win" : "loss" });
   }
   const myTurn = !waiting && !finished && state.current === game.myRole;
   const locked = waiting || finished || !myTurn || moveMut.isPending;
@@ -127,16 +129,16 @@ function OnlineGame() {
       ? `Waiting for ${oppName} to accept your challenge…`
       : `${oppName} has challenged you!`
     : finished
-      ? state.winner === null
+      ? winner === null
         ? "It's a draw"
-        : state.winner === game.myRole
-          ? "You win!"
-          : `${oppName} wins`
+        : winner === game.myRole
+          ? game.resigned ? `You win — ${oppName} resigned` : "You win!"
+          : game.resigned ? "You resigned" : `${oppName} wins`
       : myTurn
         ? "Your move"
         : "Opponent's move…";
 
-  const resultClass = finished && state.winner ? (state.winner === game.myRole ? "text-primary" : markClass(state.winner)) : "";
+  const resultClass = finished && winner ? (winner === game.myRole ? "text-primary" : markClass(winner)) : "";
 
   return (
     <main className="min-h-[calc(100vh-57px)] px-4 py-8">
@@ -168,19 +170,24 @@ function OnlineGame() {
           )}
           {finished && (
             <p className="mt-2 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 font-mono text-xs uppercase text-muted-foreground">
-              {state.winner ? (
+              {winner ? (
                 <>
-                  <span className={resultClass}>{state.winner}</span> wins · {newElo ? `new rating ${newElo}` : "rating updated"}
+                  <span className={resultClass}>{winner}</span> wins{game.resigned ? " by resignation" : ""}
                 </>
               ) : (
-                <>Draw · {newElo ? `new rating ${newElo}` : "rating updated"}</>
+                <>Draw</>
               )}
+              {" · "}{game.friendGame ? "Unrated friend game" : "Rated"}
             </p>
           )}
           {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
         </header>
 
-        <BoardView state={state} locked={locked} onPlay={(mv) => moveMut.mutate(mv)} />
+        {finished ? (
+          <Replay game={game} winner={winner} />
+        ) : (
+          <BoardView state={state} locked={locked} onPlay={(mv) => moveMut.mutate(mv)} />
+        )}
 
         <div className="mt-6 flex justify-center gap-3">
           {waiting && !game.createdByMe && null}
@@ -268,5 +275,78 @@ function LobbyShare({ onCancel }: { onCancel: () => void }) {
         <button onClick={onCancel} className="rounded-md border px-4 py-2 text-sm">Cancel</button>
       </div>
     </div>
+  );
+}
+
+function EloCard({ name, role, before, delta, won }: { name: string; role: Player; before: number | null; delta: number | null; won: boolean }) {
+  const after = before !== null && delta !== null ? before + delta : null;
+  return (
+    <div className={cn("rounded-lg border bg-card px-4 py-3 text-left", won && "border-primary")}>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className={cn("font-bold", markClass(role))}>{role}</span> · {won ? "Winner" : "Player"}
+      </p>
+      <p className="mt-1 truncate font-display font-bold">{name}</p>
+      <p className="mt-1 text-sm">
+        {before !== null ? <span className="text-muted-foreground">{before} → </span> : null}
+        {after !== null ? <span className="font-bold">{after}</span> : null}
+        {delta !== null && (
+          <span className={cn("ml-2 font-mono text-xs", delta > 0 ? "text-player-o" : delta < 0 ? "text-destructive" : "text-muted-foreground")}>
+            {delta > 0 ? `+${delta}` : delta}
+          </span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+function Replay({ game, winner }: { game: Awaited<ReturnType<typeof getGame>>; winner: Player | null }) {
+  const states = replayStates(game.mode, game.moves ?? [], game.state);
+  const last = states.length - 1;
+  const [i, setI] = useState(last);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    if (!playing) return;
+    if (i >= last) { setPlaying(false); return; }
+    const t = setTimeout(() => setI((n) => Math.min(last, n + 1)), 700);
+    return () => clearTimeout(t);
+  }, [playing, i, last]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") { setPlaying(false); setI((n) => Math.max(0, n - 1)); }
+      else if (e.key === "ArrowRight") { setPlaying(false); setI((n) => Math.min(last, n + 1)); }
+      else if (e.key === "Home") { setPlaying(false); setI(0); }
+      else if (e.key === "End") { setPlaying(false); setI(last); }
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [last]);
+  // At the end show the real final board (exact + marks); earlier steps use the rebuilt positions.
+  const view: GameState = i === last ? game.state : states[i]!;
+  const opp = game.opponent ? `${flag(game.opponent.country)} ${game.opponent.username}` : "Opponent";
+  const me = game.myName ?? "You";
+  const xName = game.myRole === "X" ? me : opp;
+  const oName = game.myRole === "O" ? me : opp;
+  const e = game.elo;
+  const btn = "rounded-md border bg-card px-3 py-2 text-sm disabled:opacity-40";
+  return (
+    <>
+      <div className="mx-auto mt-6 grid max-w-xl grid-cols-2 gap-3">
+        <EloCard name={xName} role="X" before={game.friendGame ? null : e?.xBefore ?? null} delta={game.friendGame ? null : e?.xDelta ?? null} won={winner === "X"} />
+        <EloCard name={oName} role="O" before={game.friendGame ? null : e?.oBefore ?? null} delta={game.friendGame ? null : e?.oDelta ?? null} won={winner === "O"} />
+      </div>
+      <div className="mx-auto mt-4 flex max-w-xl flex-wrap items-center justify-center gap-2">
+        <span className="rounded-full bg-primary/15 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-primary">Replay</span>
+        <button className={btn} onClick={() => { setPlaying(false); setI(0); }} disabled={i === 0} aria-label="First move">⏮</button>
+        <button className={btn} onClick={() => { setPlaying(false); setI(Math.max(0, i - 1)); }} disabled={i === 0} aria-label="Previous move">◀</button>
+        <button className={btn} onClick={() => { if (i >= last) setI(0); setPlaying((p) => !p); }} disabled={last === 0} aria-label={playing ? "Pause" : "Play"}>{playing ? "❚❚" : "▶"}</button>
+        <button className={btn} onClick={() => { setPlaying(false); setI(Math.min(last, i + 1)); }} disabled={i === last} aria-label="Next move">▶▶</button>
+        <button className={btn} onClick={() => { setPlaying(false); setI(last); }} disabled={i === last} aria-label="Last move">⏭</button>
+        <span className="font-mono text-xs text-muted-foreground">Move {i}/{last}</span>
+      </div>
+      <p className="mt-1 text-center text-xs text-muted-foreground">Use ← → keys to step through moves</p>
+      <BoardView state={view} locked onPlay={() => {}} hintBoard={view.over ? null : view.target} />
+    </>
   );
 }
