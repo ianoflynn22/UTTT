@@ -7,6 +7,7 @@ import { MODE_INFO, type Mode } from "@/lib/game";
 import { flag } from "@/lib/countries";
 import { Wld } from "@/components/rating-bits";
 import { cn } from "@/lib/utils";
+import { getWeeklyLeaderboard } from "@/lib/weekly.functions";
 
 export const Route = createFileRoute("/leaderboard")({
   staticData: { sitemap: true },
@@ -28,8 +29,14 @@ type Rel = { status: string; requester_id: string };
 
 function Leaderboard() {
   const [mode, setMode] = useState<Mode>("ultimate");
+  const [period, setPeriod] = useState<"all" | "week">("all");
   const [open, setOpen] = useState<string | null>(null);
   const me = useUser();
+  const weekly = useQuery({
+    queryKey: ["leaderboard-week", mode],
+    enabled: period === "week",
+    queryFn: () => getWeeklyLeaderboard({ data: { mode } }),
+  });
   const { data, isLoading } = useQuery({
     queryKey: ["leaderboard", mode],
     queryFn: async () => {
@@ -47,13 +54,42 @@ function Leaderboard() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="font-display text-3xl font-bold">Leaderboard</h1>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 inline-flex rounded-full border bg-card p-1">
+        {(["all", "week"] as const).map((p) => (
+          <button key={p} onClick={() => setPeriod(p)} className={cn("rounded-full px-3 py-1 text-sm", p === period ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
+            {p === "all" ? "All-time" : "This week"}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
         {(Object.keys(MODE_INFO) as Mode[]).map((m) => (
           <button key={m} onClick={() => setMode(m)} className={cn("rounded-full border px-3 py-1 text-sm", m === mode ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>
             {MODE_INFO[m].name}
           </button>
         ))}
       </div>
+      {period === "week" ? (
+        <>
+          <div className="mt-5 overflow-hidden rounded-xl border bg-card">
+            {weekly.isLoading ? (
+              <p className="p-5 text-sm text-muted-foreground">Loading…</p>
+            ) : !weekly.data?.length ? (
+              <p className="p-5 text-sm text-muted-foreground">No rated games this week yet — climb to the top!</p>
+            ) : (
+              weekly.data.map((r, i) => (
+                <div key={r.id} className="flex items-center gap-3 border-b px-4 py-3 last:border-0">
+                  <span className="w-6 font-mono text-sm text-muted-foreground">{i + 1}</span>
+                  <span className="flex-1 font-medium">{flag(r.country)} {r.username}{me?.id === r.id && <span className="ml-2 font-mono text-xs text-muted-foreground">(you)</span>}</span>
+                  <span className="hidden font-mono text-xs text-muted-foreground sm:inline">{r.wins}W · {r.games} games</span>
+                  <span className={cn("w-14 text-right text-sm font-semibold tabular-nums", r.gain >= 0 ? "text-primary" : "text-destructive")}>{r.gain > 0 ? "+" : ""}{r.gain}</span>
+                </div>
+              ))
+            )}
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">Rating gained in rated games since Monday 00:00 UTC. Resets every week.</p>
+        </>
+      ) : (
+      <>
       <div className="mt-5 overflow-hidden rounded-xl border bg-card">
         {isLoading ? (
           <p className="p-5 text-sm text-muted-foreground">Loading…</p>
@@ -86,6 +122,8 @@ function Leaderboard() {
         )}
       </div>
       <p className="mt-4 text-sm text-muted-foreground">Tap a name to see their record and add them as a friend.</p>
+      </>
+      )}
     </main>
   );
 }
