@@ -1,4 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { getFriendActivity } from "@/lib/friend-activity.functions";
 import { track } from "@/lib/analytics";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -68,6 +71,11 @@ function FriendsPage() {
   const outgoing = (friendships ?? []).filter((f) => f.status === "pending" && f.requester_id === user.id);
   const friends = (friendships ?? []).filter((f) => f.status === "accepted");
   const blocked = (friendships ?? []).filter((f) => f.status === "blocked" && f.requester_id === user.id);
+  const activity = useQuery({
+    queryKey: ["friend-activity", user.id],
+    queryFn: () => getFriendActivity(),
+    refetchInterval: 10_000,
+  });
 
   const ids = [
     ...new Set([
@@ -293,14 +301,24 @@ function FriendsPage() {
               const friendId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
               const p = profiles?.get(friendId);
               const rec = recordFor(friendId);
+              const live = activity.data?.find((a) => a.friendId === friendId);
               return (
                 <div key={f.id} className="rounded-xl border bg-card p-4 text-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="flex-1 font-medium">{p ? `${flag(p.country)} ${p.username}` : "Player"}</span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="min-w-0 flex-1 break-words font-medium">{p ? `${flag(p.country)} ${p.username}` : "Player"}</span>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span aria-hidden="true" className={cn("h-2 w-2 shrink-0 rounded-full", live?.online ? "bg-player-o" : "bg-muted-foreground/40")} />
+                      {activity.isError ? "Status unavailable" : !activity.data ? "Checking…" : live?.online ? "Online" : "Offline"}
+                    </span>
                     <button onClick={() => challenge(friendId)} className="rounded-md bg-primary px-3 py-1.5 font-bold text-primary-foreground">Challenge</button>
                     <button onClick={() => confirm(`Remove ${p?.username ?? "this friend"}?`) && remove(f.id)} className="rounded-md border px-3 py-1.5 text-sm">Remove</button>
                     <button onClick={() => confirm(`Block ${p?.username ?? "this player"}? They won't be able to send you requests or challenges.`) && block(friendId)} className="rounded-md border border-destructive/50 px-3 py-1.5 text-sm text-destructive">Block</button>
                   </div>
+                  {live && live.games.length > 0 && <div className="mt-3 flex flex-wrap gap-2">
+                    {live.games.map((g) => <Button key={g.id} asChild variant="outline" size="sm">
+                      <Link to="/watch/$gameId" params={{ gameId: g.id }}><Eye />Watch · {MODE_INFO[g.mode].name}</Link>
+                    </Button>)}
+                  </div>}
                   {rec.size > 0 && (
                     <p className="mt-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                       {Object.entries(rec).map(([m, r]) => (

@@ -42,3 +42,24 @@ describe("game state JSON round trip (online games)", () => {
     expect(fromJson("ttt", { boards: "x" })).not.toBeNull();
   });
 });
+
+import { replayStates as _replay, applyMove as _apply, newGame as _new } from "./game";
+describe("replayStates", () => {
+  it("rebuilds the exact final position, including random pluses", () => {
+    let seed = 7;
+    const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    let s = _new("ultimateplus");
+    const moves: { b: number; c: number }[] = [];
+    for (let i = 0; i < 120 && !s.over; i++) {
+      const legal = [] as { b: number; c: number }[];
+      s.boards.forEach((bd, b) => bd.forEach((_, c) => { const n = _apply(s, { b, c }, () => 1); if (n !== s) legal.push({ b, c }); }));
+      const m = legal[Math.floor(rng() * legal.length)]!;
+      moves.push(m);
+      s = _apply(s, m, rng);
+    }
+    const states = _replay("ultimateplus", moves, s);
+    expect(states).toHaveLength(moves.length + 1);
+    expect(states[states.length - 1]!.boards).toEqual(s.boards);
+    expect(states[states.length - 1]!.meta).toEqual(s.meta);
+  });
+});

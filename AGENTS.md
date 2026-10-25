@@ -18,3 +18,4 @@
 - Account deletion (src/lib/account.functions.ts) removes the login and personal rows but keeps finished games, anonymising the profile to deleted-user-<id>; profiles has no FK to auth.users so it survives (opponents keep their history).
 - Blocking is a friendships row with status blocked (requester = blocker), created via block_user; is_blocked guards requests, invite links and lobbies.
 - Friend games (games.created_by set: challenges, rematches, share links) are unrated; apply_elo_result skips them. Only matchmaking games (created_by NULL) change Elo.
+- Friend presence uses a visible-tab heartbeat with 90-second expiry; friend_activity and watch_friend_game enforce accepted friendships and both players’ block checks in SQL, without widening games SELECT access. Spectators poll read-only snapshots and cannot make moves.

@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import { FriendPresence } from "@/components/FriendPresence";
 import { supabase } from "@/integrations/supabase/client";
 import appCss from "../styles.css?url";
 import { CookieBanner } from "@/components/CookieBanner";
@@ -178,6 +179,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <FriendPresence />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <SiteHeader />
       <AdHeaderBanner />

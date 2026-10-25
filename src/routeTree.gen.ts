@@ -28,6 +28,7 @@ import { Route as CUsernameRouteImport } from './routes/c.$username'
 import { Route as PuzzleArchiveRouteImport } from './routes/puzzle_.archive'
 import { Route as AuthenticatedOnlineIndexRouteImport } from './routes/_authenticated/online.index'
 import { Route as AuthenticatedOnlineGameIdRouteImport } from './routes/_authenticated/online.$gameId'
+import { Route as AuthenticatedWatchGameIdRouteImport } from './routes/_authenticated/watch.$gameId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -125,6 +126,12 @@ const AuthenticatedOnlineGameIdRoute =
     path: '/online/$gameId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedWatchGameIdRoute =
+  AuthenticatedWatchGameIdRouteImport.update({
+    id: '/watch/$gameId',
+    path: '/watch/$gameId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/c/$username': typeof CUsernameRoute
   '/puzzle/archive': typeof PuzzleArchiveRoute
   '/online/$gameId': typeof AuthenticatedOnlineGameIdRoute
+  '/watch/$gameId': typeof AuthenticatedWatchGameIdRoute
   '/online/': typeof AuthenticatedOnlineIndexRoute
 }
 export interface FileRoutesByTo {
@@ -164,6 +172,7 @@ export interface FileRoutesByTo {
   '/c/$username': typeof CUsernameRoute
   '/puzzle/archive': typeof PuzzleArchiveRoute
   '/online/$gameId': typeof AuthenticatedOnlineGameIdRoute
+  '/watch/$gameId': typeof AuthenticatedWatchGameIdRoute
   '/online': typeof AuthenticatedOnlineIndexRoute
 }
 export interface FileRoutesById {
@@ -186,6 +195,7 @@ export interface FileRoutesById {
   '/c/$username': typeof CUsernameRoute
   '/puzzle_/archive': typeof PuzzleArchiveRoute
   '/_authenticated/online/$gameId': typeof AuthenticatedOnlineGameIdRoute
+  '/_authenticated/watch/$gameId': typeof AuthenticatedWatchGameIdRoute
   '/_authenticated/online/': typeof AuthenticatedOnlineIndexRoute
 }
 export interface FileRouteTypes {
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/c/$username'
     | '/puzzle/archive'
     | '/online/$gameId'
+    | '/watch/$gameId'
     | '/online/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/c/$username'
     | '/puzzle/archive'
     | '/online/$gameId'
+    | '/watch/$gameId'
     | '/online'
   id:
     | '__root__'
@@ -249,6 +261,7 @@ export interface FileRouteTypes {
     | '/c/$username'
     | '/puzzle_/archive'
     | '/_authenticated/online/$gameId'
+    | '/_authenticated/watch/$gameId'
     | '/_authenticated/online/'
   fileRoutesById: FileRoutesById
 }
@@ -403,6 +416,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnlineGameIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/watch/$gameId': {
+      id: '/_authenticated/watch/$gameId'
+      path: '/watch/$gameId'
+      fullPath: '/watch/$gameId'
+      preLoaderRoute: typeof AuthenticatedWatchGameIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -412,6 +432,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedOnlineGameIdRoute: typeof AuthenticatedOnlineGameIdRoute
+  AuthenticatedWatchGameIdRoute: typeof AuthenticatedWatchGameIdRoute
   AuthenticatedOnlineIndexRoute: typeof AuthenticatedOnlineIndexRoute
 }
 
@@ -421,6 +442,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedOnlineGameIdRoute: AuthenticatedOnlineGameIdRoute,
+  AuthenticatedWatchGameIdRoute: AuthenticatedWatchGameIdRoute,
   AuthenticatedOnlineIndexRoute: AuthenticatedOnlineIndexRoute,
 }
 

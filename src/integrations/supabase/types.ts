@@ -206,6 +206,29 @@ export type Database = {
           },
         ]
       }
+      player_presence: {
+        Row: {
+          last_seen: string
+          user_id: string
+        }
+        Insert: {
+          last_seen?: string
+          user_id: string
+        }
+        Update: {
+          last_seen?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_presence_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           country: string | null
@@ -324,6 +347,7 @@ export type Database = {
       admin_stats: { Args: never; Returns: Json }
       apply_elo_result: { Args: { _game_id: string }; Returns: Json }
       block_user: { Args: { _other: string }; Returns: undefined }
+      can_watch_game: { Args: { _game_id: string }; Returns: boolean }
       challenge_friend: {
         Args: { _friend_id: string; _mode: string }
         Returns: string
@@ -331,6 +355,7 @@ export type Database = {
       create_lobby: { Args: { _mode: string }; Returns: string }
       delete_friend_game: { Args: { _game_id: string }; Returns: undefined }
       find_or_create_match: { Args: { _mode: string }; Returns: string }
+      friend_activity: { Args: never; Returns: Json }
       has_role: { Args: { _role: string }; Returns: boolean }
       initial_state: { Args: { _mode: string }; Returns: Json }
       is_blocked: { Args: { _a: string; _b: string }; Returns: boolean }
@@ -343,6 +368,7 @@ export type Database = {
           mode: string
         }[]
       }
+      presence_heartbeat: { Args: never; Returns: undefined }
       puzzle_day_scores: {
         Args: { _day: string }
         Returns: {
@@ -373,6 +399,7 @@ export type Database = {
         Returns: string
       }
       username_is_blocked: { Args: { _name: string }; Returns: boolean }
+      watch_friend_game: { Args: { _game_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

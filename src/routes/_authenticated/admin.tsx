@@ -12,6 +12,11 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
       { title: "Site stats · UTTT+" },
+      { name: "description", content: "Private UTTT+ player, game and retention statistics." },
+      { property: "og:title", content: "Site stats · UTTT+" },
+      { property: "og:description", content: "Private UTTT+ player, game and retention statistics." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
   }),

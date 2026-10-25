@@ -134,6 +134,13 @@
       "when": 1792004057788,
       "tag": "0018_rematch_any_opponent",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792832723239,
+      "tag": "0019_friend_presence_and_spectating",
+      "breakpoints": true
     }
   ]
 }
