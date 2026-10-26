@@ -56,8 +56,8 @@
 - [x] Play Store icon 512 + feature graphic 1024x500 (in Files)
 
 ## Tomorrow
-- [ ] Play Store screenshots (phone frames of game, puzzle, replay)
+- [x] Play Store screenshots (phone frames of game, puzzle, replay) — in Files/play-store
 - [ ] Admin retention stats (returning players, games per player)
 - [x] Spectate / online dot for friends (accepted friends only, read-only, block-aware)
 - [x] Verify friends watching with a real active friend game (Watch button, live board, read-only confirmed)
-- [ ] Weekly leaderboard
+- [x] Weekly leaderboard
