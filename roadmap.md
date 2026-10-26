@@ -59,5 +59,5 @@
 - [ ] Play Store screenshots (phone frames of game, puzzle, replay)
 - [ ] Admin retention stats (returning players, games per player)
 - [x] Spectate / online dot for friends (accepted friends only, read-only, block-aware)
-- [ ] Verify friends watching with a real active friend game
+- [x] Verify friends watching with a real active friend game (Watch button, live board, read-only confirmed)
 - [ ] Weekly leaderboard
